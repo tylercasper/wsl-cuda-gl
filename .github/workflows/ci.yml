@@ -1,0 +1,70 @@
+# Builds the library, examples, tools and tests on GitHub's hosted Ubuntu runners
+# across compilers, CUDA versions and Ubuntu releases, then runs the tests.
+#
+# The runners have no GPU and no WSL, so the GPU tests report "skipped" here; the unit
+# tests and the consumer tests (building a separate project against the library) run
+# for real. Run the full suite, GPU tests included, on a WSL2 machine:
+#   WSLCG_REQUIRE_GPU_TESTS=1 ctest --test-dir build
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04 / GCC / CUDA 13.0
+            os: ubuntu-24.04
+            cuda: "13.0"
+            cxx: g++
+          - name: Ubuntu 24.04 / Clang / CUDA 13.0
+            os: ubuntu-24.04
+            cuda: "13.0"
+            cxx: clang++
+          - name: Ubuntu 24.04 / GCC / CUDA 12.6 / shared library
+            os: ubuntu-24.04
+            cuda: "12.6"
+            cxx: g++
+            cmake_args: -DBUILD_SHARED_LIBS=ON
+          - name: Ubuntu 22.04 / GCC / CUDA 12.6 / downloaded DirectX-Headers
+            os: ubuntu-22.04
+            cuda: "12.6"
+            cxx: g++
+            cmake_args: -DWSLCG_DIRECTX_HEADERS=FETCH
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/ci-install-deps.sh "${{ matrix.cuda }}"
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          -DCMAKE_CUDA_HOST_COMPILER=${{ matrix.cxx }}
+          -DCMAKE_CUDA_ARCHITECTURES=75
+          "-DCMAKE_CXX_FLAGS=-Wall -Wextra -Werror"
+          ${{ matrix.cmake_args }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+# The library loads CUDA, D3D12 and GL at run time; consumers only need it and libdl.
+include("${CMAKE_CURRENT_LIST_DIR}/wsl_cuda_gl_targets.cmake")
+check_required_components(wsl_cuda_gl)
