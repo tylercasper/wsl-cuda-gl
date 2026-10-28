@@ -235,16 +235,19 @@ SupportReport check_support() {
         report.gl_renderer = gl.string(gl::RENDERER);
         report.gl_version = gl.string(gl::VERSION);
         report.mesa_workaround = mesa_has_memobj_import_bug(report.gl_version.c_str());
-        const CudaDriver& cu = cuda_driver();
-        CUcontext ctx = nullptr;
-        CUdevice dev = 0;
-        char name[256] = {};
-        if (cu.CtxGetCurrent(&ctx) == CUDA_SUCCESS && ctx)
-            cu.CtxGetDevice(&dev);
-        else
-            cu.DeviceGet(&dev, 0);
-        if (cu.DeviceGetName(name, sizeof name, dev) == CUDA_SUCCESS) report.cuda_device = name;
-        Buffer probe(4096); // creating one runs the self-test
+        if (const CudaDriver* cu = try_cuda_driver()) {
+            CUcontext ctx = nullptr;
+            CUdevice dev = 0;
+            char name[256] = {};
+            if (cu->CtxGetCurrent(&ctx) == CUDA_SUCCESS && ctx)
+                cu->CtxGetDevice(&dev);
+            else
+                cu->DeviceGet(&dev, 0);
+            if (cu->DeviceGetName(name, sizeof name, dev) == CUDA_SUCCESS) report.cuda_device = name;
+        }
+        // Creating one checks everything, in the same order (and with the same
+        // messages) as any other Buffer, and runs the self-test.
+        Buffer probe(4096);
         report.supported = true;
     } catch (const std::exception& e) {
         report.reason = e.what();

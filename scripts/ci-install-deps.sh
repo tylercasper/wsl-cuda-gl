@@ -23,7 +23,8 @@ $sudo dpkg -i "$tmp/cuda-keyring.deb"
 $sudo apt-get update -q
 $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
     "cuda-nvcc-${cuda_pkg}" "cuda-cudart-dev-${cuda_pkg}" "cuda-driver-dev-${cuda_pkg}" \
-    ninja-build pkg-config libgl-dev libegl-dev libglfw3-dev libegl-mesa0 libgl1-mesa-dri directx-headers-dev
+    ninja-build pkg-config libgl-dev libopengl-dev libegl-dev libglfw3-dev libegl-mesa0 libgl1-mesa-dri \
+    directx-headers-dev
 
 # Make nvcc findable by later steps.
 if [ -n "${GITHUB_PATH:-}" ]; then
